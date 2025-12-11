@@ -1,0 +1,319 @@
+=== Running V3 Pipeline ===
+
+Checking required packages...
+All required packages are available.
+
+[1/3] Data preparation...
+-- Attaching core tidyverse packages ------------------------ tidyverse 2.0.0 --
+v dplyr     1.1.4     v readr     2.1.5
+v forcats   1.0.0     v stringr   1.5.1
+v ggplot2   4.0.0     v tibble    3.3.0
+v lubridate 1.9.3     v tidyr     1.3.1
+v purrr     1.2.0     
+-- Conflicts ------------------------------------------ tidyverse_conflicts() --
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()
+i Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:lubridate':
+
+    hour, isoweek, mday, minute, month, quarter, second, wday, week,
+    yday, year
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+The following object is masked from 'package:purrr':
+
+    transpose
+
+Loading data...
+Processing beneficiary data...
+Processing claims data...
+Aggregating claims...
+Merging data...
+Creating features...
+Final cleaning...
+
+Final dataset:
+Number of beneficiaries (rows): 116352 
+Number of variables (columns): 23 
+
+--- Target Variable ---
+Proportion with any cost: 0.737 
+Mean total payment: $ 4131.84 
+Median total payment: $ 1000 
+SD total payment: $ 10005.66 
+
+--- Utilization (Features) ---
+Mean IP visits: 0.24 
+Mean OP visits: 2.43 
+Mean Carrier visits: 14.74 
+
+--- Demographics ---
+Mean age: 71.6 
+Mean chronic conditions: 2.22 
+
+Validating analysis dataset...
+  All required variables present.
+  No duplicate beneficiaries.
+  No data leakage in feature set.
+  Payment variables (ip_pay, op_pay, car_pay) kept only as target components.
+Validation complete.
+
+Saving processed data...
+Data preparation complete!
+Output saved to: output 
+  - analysis_data_noleak.rds (R object)
+  - analysis_data_noleak.csv (CSV format)
+
+Analysis dataset ready for modeling (NO DATA LEAKAGE).
+Payment amounts (ip_pay, op_pay, car_pay) are kept for target variable only.
+
+[2/3] Modeling...
+
+Attaching package: 'xgboost'
+
+The following object is masked from 'package:dplyr':
+
+    slice
+
+Loading required package: lattice
+
+Attaching package: 'caret'
+
+The following object is masked from 'package:purrr':
+
+    lift
+
+Type 'citation("pROC")' for a citation.
+
+Attaching package: 'pROC'
+
+The following objects are masked from 'package:stats':
+
+    cov, smooth, var
+
+Data loaded. N = 116352 
+
+Train: 81447 Test: 34905 
+=== Two-Part Model: Part 1 (Frequency) ===
+Features: age, age2, sex, race, chronic_count
+
+Fitting frequency models...
+  Logistic GLM complete.
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  Training AUC: 0.9188 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  Test AUC: 0.9193 
+  Training Accuracy (optimal threshold): 0.87 
+  Test Accuracy (optimal threshold): 0.8713 
+
+Fitting XGBoost classifier...
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  XGBoost AUC: 0.919 
+
+
+=== Two-Part Model: Part 2 (Severity) ===
+
+[1/3] Fitting Lognormal GLM...
+  Lognormal GLM complete.
+  Training RMSE: 6844.37 
+  Test RMSE (on positive-cost samples): 6730.1 
+
+  Gamma GLM complete.
+  Training RMSE: 7307.71 
+  Test RMSE (on positive-cost samples): 7201.82 
+
+  XGBoost regressor complete.
+  Training RMSE: 5591.55 
+  Test RMSE (on positive-cost samples): 5961.14 
+
+Combining two-part predictions...
+Two-part predictions combined.
+
+=== Single GLM Baseline ===
+Single GLM complete.
+
+
+=== Performance Evaluation ===
+                                              Model     MAE    RMSE  RMSLE
+1       Two-Part (Logistic GLM + XGBoost Regressor) 1638.93 5109.04 2.0436
+2 Two-Part (XGBoost Classifier + XGBoost Regressor) 1638.70 5111.97 2.0227
+3     Two-Part (XGBoost Classifier + Lognormal GLM) 1955.07 5762.51 1.3967
+4           Two-Part (Logistic GLM + Lognormal GLM) 1956.60 5767.96 1.4112
+5                            Single GLM (Lognormal) 2013.27 5871.64 0.6192
+6         Two-Part (XGBoost Classifier + Gamma GLM) 2126.21 6159.53 1.6713
+7               Two-Part (Logistic GLM + Gamma GLM) 2128.57 6167.72 1.6894
+  RMSLE_NonZero
+1        0.6303
+2        0.6431
+3        0.6999
+4        0.6869
+5        0.6516
+6        0.6851
+7        0.6728
+
+Best model (by RMSE): Two-Part (Logistic GLM + XGBoost Regressor) 
+  MAE: 1638.93 
+  RMSE: 5109.04 
+  RMSLE (all samples): 2.0436 
+  RMSLE (non-zero samples only): 0.6303 
+
+
+=== Residual Diagnostics ===
+Residual plots saved to output/residuals/
+
+=== 5-Fold Cross-Validation ===
+  Fold 1 ...
+  Fold 2 ...
+  Fold 3 ...
+  Fold 4 ...
+  Fold 5 ...
+
+Cross-Validation Results:
+                                   Model MAE_mean MAE_sd RMSE_mean RMSE_sd
+1 Two-Part (XGBoost + XGBoost) - CV (V3)  1629.79  43.86   5170.01  277.86
+  RMSLE_mean RMSLE_sd RMSLE_NonZero_mean RMSLE_NonZero_sd
+1     1.8287   0.1974             0.6448           0.0055
+Calibration analysis...
+Calibration plots saved to output/calibration/
+
+=== Sensitivity Analysis: Model without chronic_count ===
+
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Frequency model without chronic_count:
+  Test AUC: 0.5819 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  Main model AUC: 0.9193 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  AUC drop: 0.3375 
+
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+XGBoost frequency model without chronic_count:
+  Test AUC: 0.5894 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  Main model AUC: 0.9187 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+  AUC drop: 0.3292 
+
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+Sensitivity analysis results saved to output/sensitivity_analysis_v3.csv
+
+
+=== Saving Models and Predictions ===
+All models and predictions saved.
+
+=== Modeling Complete ===
+
+[3/3] Subgroup analysis...
+Subgroup analysis...
+Chronic count quantiles: 0 0 3 11 
+Multi-morbidity group distribution:
+
+  High Multi-Morbidity    Low Multi-Morbidity Medium Multi-Morbidity 
+                  9864                  13631                  11410 
+
+Multi-Morbidity Subgroup Performance:
+# A tibble: 3 x 11
+  multi_morbidity_group      n glm_mae glm_rmse glm_rmsle xgb_mae xgb_rmse
+  <chr>                  <int>   <dbl>    <dbl>     <dbl>   <dbl>    <dbl>
+1 High Multi-Morbidity    9864   5482.   10311.     0.572   4423.    9156.
+2 Low Multi-Morbidity    13631    147.     566.     2.13     167.     514.
+3 Medium Multi-Morbidity 11410   1070.    3079.     0.641    990.    2676 
+# i 4 more variables: xgb_rmsle <dbl>, rmse_improvement <dbl>,
+#   mae_improvement <dbl>, rmsle_improvement <dbl>
+
+Multi-morbidity analysis saved.
+
+=== Subgroup 2: Hospitalized Analysis ===
+
+Hospitalized Subgroup Performance:
+# A tibble: 2 x 11
+  hospitalized_group     n glm_mae glm_rmse glm_rmsle xgb_mae xgb_rmse xgb_rmsle
+  <chr>              <int>   <dbl>    <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+1 Hospitalized        4812  10796.   15061.     0.791   8611.   13434.     0.661
+2 Not Hospitalized   30093    543.    1523.     1.49     524.    1204.     2.16 
+# i 3 more variables: rmse_improvement <dbl>, mae_improvement <dbl>,
+#   rmsle_improvement <dbl>
+
+Hospitalized analysis saved.
+
+=== Combined Subgroup Analysis ===
+
+Combined Subgroup Performance (top 10 by RMSE improvement):
+# A tibble: 5 x 8
+  combined_group            n glm_mae glm_rmse xgb_mae xgb_rmse rmse_improvement
+  <chr>                 <int>   <dbl>    <dbl>   <dbl>    <dbl>            <dbl>
+1 High Multi-Morbidity~  5864   1317.    2993.   1217.    2234.             25.4
+2 Medium Multi-Morbidi~   771   6955.   10999.   6207.    9517.             13.5
+3 Medium Multi-Morbidi~ 10639    644.    1183.    612.    1057.             10.7
+4 High Multi-Morbidity~  4000  11589.   15781.   9123.   14121.             10.5
+5 Low Multi-Morbidity ~ 13590    130.     417.    155.     429.             -2.9
+# i 1 more variable: mae_improvement <dbl>
+
+Combined subgroup analysis saved.
+
+=== Subgroup Analysis Summary ===
+
+Multi-Morbidity Subgroups:
+  XGBoost outperforms GLM in:
+    - High Multi-Morbidity: RMSE improvement = 11.21%
+    - Low Multi-Morbidity: RMSE improvement = 9.12%
+    - Medium Multi-Morbidity: RMSE improvement = 13.09%
+
+Hospitalized Subgroups:
+  XGBoost vs GLM:
+    - Hospitalized: RMSE improvement = 10.8%
+    - Not Hospitalized: RMSE improvement = 20.92%
+
+=== Subgroup Analysis Complete ===
+
+=== Pipeline Complete ===
+Warning messages:
+1: In eval(ei, envir) :
+  Using 'data ' directory (with trailing space). Consider renaming to 'data' to avoid path issues.
+2: glm.fit: fitted probabilities numerically 0 or 1 occurred 

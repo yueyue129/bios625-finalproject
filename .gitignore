@@ -1,0 +1,23 @@
+# R
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj
+*.Rproj.user
+
+# Output
+output/
+*.html
+*.pdf
+*.png
+*.jpg
+
+# Data (if large)
+# data/*.csv
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
