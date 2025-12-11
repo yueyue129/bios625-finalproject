@@ -97,6 +97,19 @@ This project implements a Two-Part model framework to predict annual Medicare co
 
 ### Modeling Approach
 
+## 🏗️ Model Architecture
+```
+Healthcare Cost = Frequency × Severity
+                    ↓           ↓
+              Will you get sick? How expensive?
+                    ↓           ↓
+            Logistic Regression  XGBoost
+              (AUC = 0.92)   (RMSE = $5,961)
+                    ↓           ↓
+              Ensemble → Final Prediction
+                         ($1,639 MAE)
+```
+
 1. **Two-Part Model**:
    - **Part 1 (Frequency)**: Predicts P(Y > 0)
      - Models: Logistic GLM, XGBoost classifier
