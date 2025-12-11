@@ -61,7 +61,7 @@ This keeps the project reproducible while complying with GitHub storage limits.
   - Outputs: `output/model_performance_v3.csv`, `output/test_predictions_v3.rds`
 
     - **Note**: The current `modeling.R` may not be compatible with newer versions of XGBoost. A supplementary `modeling.R` file has been provided by team members that is compatible with the latest XGBoost version. Please refer to the supplementary materials if you encounter XGBoost compatibility issues.
-    - **注**：当前的 `modeling.R` 文件可能与较新的 XGBoost 版本不兼容。团队成员已提供了一份与之兼容的最新 XGBoost 版本专用的 `modeling.R` 文件。若您遇到 XGBoost 兼容性问题，请查阅相关补充资料。
+    
 - `subgroup_analysis.R` – Performance by multi-morbidity and hospitalization status  
   - Outputs: `output/subgroup_analysis_*.csv`
 - `eda.R`, `run_eda.R` – Exploratory data analysis helpers
