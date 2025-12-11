@@ -60,7 +60,7 @@ This keeps the project reproducible while complying with GitHub storage limits.
     - Features: demographics + visit counts  
   - Outputs: `output/model_performance_v3.csv`, `output/test_predictions_v3.rds`
 
-    - **Note**: The current `modeling.R` may not be compatible with newer versions of XGBoost. A supplementary `modeling.R` file has been provided by team members that is compatible with the latest XGBoost version. Please refer to the supplementary materials if you encounter XGBoost compatibility issues.
+    - **Note**: The current 'modeling.R' may not be compatible with newer versions of xgboost. An updated script, 'modeling_newxgb.R', has been provided for users running the latest xgboost release. If you encounter compatibility errors, download this file and replace the original 'modeling.R' with 'modeling_newxgb.R'.
     
 - `subgroup_analysis.R` – Performance by multi-morbidity and hospitalization status  
   - Outputs: `output/subgroup_analysis_*.csv`
