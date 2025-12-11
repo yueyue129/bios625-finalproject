@@ -14,13 +14,28 @@
  **Data Scale**: 116,000+ Medicare patients, $480M+ total costs  
  **Performance**: 5-fold CV stable (< 6% variance)
 
-[View Results](#key-results) | [See Code](#quick-start) | [Read Methods](#technical-approach)
+[View Results](#key-results) 
 
 ## Project Overview
 
 This project implements a Two-Part model framework to predict annual Medicare costs using the CMS 2008-2010 DE-SynPUF dataset. We compare GLM and XGBoost approaches, evaluate performance across key subgroups, and address data leakage concerns through careful feature engineering.
 
-## Data Source
+
+## Raw Data Availability
+
+This project uses several CMS DE-SynPUF files (2008–2010), including Beneficiary,
+Carrier, Inpatient, and Outpatient claims. Some of these raw files exceed 
+1–2 GB in size. Because GitHub enforces a strict 100 MB per-file limit, the 
+original raw data cannot be included in this repository.
+
+- The `data/` folder in this repo is intentionally left empty.
+- All preprocessing steps for constructing the analytic dataset are documented in `data_prep.R`.
+- The full raw files have been submitted separately for grading as required.
+- Anyone with access to the CMS DE-SynPUF dataset can reproduce the analytic 
+  dataset by placing the raw files into `data/` and running `data_prep.R`.
+
+This maintains full reproducibility while complying with GitHub storage limitations.
+
 
 - **CMS DE-SynPUF Sample 1 (2008)**
   - 2008 Beneficiary Summary File
