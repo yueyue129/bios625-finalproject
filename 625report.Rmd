@@ -1,0 +1,299 @@
+---
+title: "Modeling Annual Health Expenditures via a Two-Part and Machine Learning Framework"
+author: "Meijie Yue, Ziyan Xu, Ruicong Peng"
+date: "2025-12-12"
+output: pdf_document
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+## Abstract
+
+Annual healthcare expenditures exhibit substantial zero inflation and heavy 
+right-skewness, making them difficult to model using standard generalized linear 
+approaches. This study evaluates whether combining a two-part modeling framework 
+with modern machine learning techniques can improve prediction accuracy and 
+calibration. Using the 116,352-beneficiary DE-SynPUF dataset, incidence of 
+spending was modeled with logistic GLM or XGBoost, and positive costs were 
+modeled with lognormal GLM, Gamma GLM, or XGBoost. Performance was assessed 
+using MAE, RMSE, RMSLE, calibration diagnostics, cross-validation, and subgroup 
+analyses. The two-part model pairing a logistic GLM with an XGBoost regressor 
+yielded the best performance (RMSE: 5,109; MAE: 1,639), outperforming a single 
+lognormal GLM by roughly 13% in RMSE, with consistent improvements across 
+multimorbidity and hospitalization subgroups. These findings demonstrate that 
+separating expenditure incidence from conditional costs and incorporating 
+flexible ML methods provides a more accurate and practical framework for 
+healthcare spending prediction.
+
+## Introduction
+
+Healthcare expenditures in the United States remain exceptionally high and have 
+been a major policy concern. In 2010, personal healthcare spending reached 
+$8,233 per capita, approximately one-fifth of average personal income, which 
+exceeded that of comparable high-income countries such as Norway, Switzerland, 
+and the Netherlands [1]. By 2012, national healthcare spending rose to $2.8 
+trillion, or 17.9% of GDP, the highest among OECD nations [2]. In 2016, the 
+United States continued to spend nearly twice as much on medical care as other 
+high-income countries with similar systems [3].
+Large-scale administrative claims data create new opportunities for improving 
+insurance pricing and policy analysis, yet annual medical spending exhibits two 
+challenging distributional features: many individuals incur zero expenditures, 
+and positive costs are heavily right-skewed, with a small fraction of 
+beneficiaries responsible for a large share of total spending. This combination 
+of zero inflation and long-tail behavior limits the effectiveness of standard 
+generalized linear models.
+To address these limitations, this study aims to improve the accuracy and 
+calibration of healthcare expenditure predictions by combining a two-part 
+modeling framework with modern machine learning techniques. The resulting model 
+benefits from both the interpretability of classical statistical methods and the 
+flexibility of machine learning approaches.
+
+## Method
+
+### Data Overview
+
+The Data Entrepreneurs Synthetic Public Use Files (DE-SynPUF), released by the 
+Centers for Medicare & Medicaid Services (CMS), were used as the primary data 
+source. DE-SynPUF provides realistic administrative claims data while protecting 
+beneficiaries’ protected health information (PHI). The dataset includes 
+approximately 2.33 million synthetic beneficiaries across 20 files, generated 
+from real Medicare claims from 2008–2010. After data integration and cleaning, 
+the final analytic dataset consisted of 116,352 unique beneficiaries, with 
+variables describing demographic characteristics, healthcare utilization 
+patterns, chronic condition indicators, and total annual expenditures. 
+
+### Exploratory Data Analysis
+
+Exploratory analysis focused on the distribution of annual medical expenditures. 
+The raw total payment distribution shows a large mass at zero and a long 
+right-skewed tail, indicating substantial zero inflation and the presence of 
+high-cost outliers. After applying the log(1 + total payment) transformation, 
+the distribution becomes more regular among positive expenditures, but a sharp 
+spike at zero remains, clearly separating non-users from users of healthcare 
+services(**Figure1**).
+These patterns confirm that annual medical spending has two distinct components: 
+one is whether any expenditure occurs, and the other is the magnitude of costs 
+conditional on positive spending. This structure motivates a two-part modeling 
+approach, using a binary model for expenditure incidence and a continuous model 
+for positive costs. The pronounced skewness among positive expenditures further 
+supports the use of lognormal or Gamma GLMs, while potential nonlinearities 
+justify the inclusion of flexible machine learning methods such as XGBoost.
+
+
+
+
+```{r}
+
+knitr::include_graphics("figure1.jpg")
+
+
+```
+
+
+### Data Preprocessing
+
+To evaluate predictive performance, the dataset was randomly partitioned into a training set (70%, $n = 81{,}447$) and a testing set (30%, $n = 34{,}905$). 
+
+The feature set included demographics (age, age², sex, race), chronic condition count, and healthcare 
+utilization variables (inpatient, outpatient, and carrier visit counts, log-
+transformed visits, and binary indicators of service use). For severity modeling, 
+positive expenditures were winsorized at the 1st and 99th percentiles. No 
+imputation was required because SynPUF contains no missingness.
+
+### Modeling Framework
+Healthcare expenditures exhibit a large mass at zero and a heavy right tail. We
+therefore adopted a two-part (frequency–severity) modeling framework, consistent 
+with actuarial practice in which event occurrence and conditional magnitude are 
+modeled separately [4]. Let annual expenditure be 
+$X = I \cdot Y$, where $I = \mathbf{1}(X > 0)$ and $Y = X \mid X>0$.
+
+**Part 1: Frequency Model** The probability of any expenditure,
+$p_i = \Pr(X_i>0)$, was modeled using:
+(1) Logistic GLM, with predictors age, age², sex, race, and chronic_count. 
+   Utilization variables were excluded to avoid information leakage.
+(2) XGBoost classifier, tuned via grid search on the training set.
+Performance was evaluated using AUC and calibration.
+
+**Part 2: Severity Model** For individuals with $X_i>0$, conditional mean cost $\mu_i = E[Y_i \mid X_i>0]$ was 
+modeled using:
+(1) Lognormal GLM with bias-corrected predictions. $E[Y_i]=\exp(\eta_i+\sigma^2/2)$
+(2)Gamma GLM with log link.
+(3)XGBoost regressor, tuned to minimize RMSE.
+Severity outcomes in insurance and healthcare cost modeling are known to exhibit strong nonlinearity 
+and high-order interactions, motivating the use of boosting-based methods that can flexibly learn 
+complex structures [5]. 
+Severity predictors included demographics, chronic_count, visit counts, and 
+log-transformed utilization variables.
+
+Final predictions were obtained using the actuarial pure premium:
+$$\widehat{X}_i = \widehat{p}_i \cdot \widehat{\mu}_i.$$
+All frequency–severity combinations and a single-equation lognormal GLM were 
+evaluated.
+
+### Model Evaluation
+
+Models were compared using MAE, RMSE, RMSLE, and RMSLE\_NonZero (computed only among positive-cost 
+observations to isolate severity accuracy). Calibration plots and five-fold cross-validation were used 
+to assess stability.
+
+### Sensitivity and Subgroup Analyses
+
+To assess robustness, chronic_count was removed from the frequency model, which reduced AUC from 0.919 
+to 0.582, confirming its clinical importance rather than data leakage. Subgroup analyses were conducted 
+by multimorbidity level and hospitalization status to evaluate performance across heterogeneous risk 
+groups.
+
+## Results
+
+### Overall Model Performance
+
+Across all candidate models, the two-part specification combining a logistic GLM
+for the frequency stage and an XGBoost regressor for the severity stage performed
+the best (Table~\ref{tab:overall}). On the test set, this model achieved an RMSE
+of 5,109 and an MAE of 1,639, improving over the single lognormal GLM by about
+13\% and 19\%, respectively. The RMSLE\_NonZero for this model was 0.63, which
+was slightly lower than the single GLM (0.65). This suggests that, among
+individuals with positive expenditures, the two-part model was also slightly
+better at capturing the multiplicative scale of costs.
+
+The other two-part models showed a clear trade-off between flexibility and
+stability. Models using GLM-based severity components (lognormal or Gamma)
+had noticeably larger RMSE and MAE, even though their structures were closer
+to standard health-economics practice. In contrast, the two-part model with
+XGBoost in both stages achieved performance similar to our final model but
+lost some interpretability in the frequency part. Overall, these patterns
+support the idea that separating frequency and severity, and using a flexible
+tree-based method at least for the severity stage, is helpful for this type
+of outcome.
+
+\begin{table}[H]
+\centering
+\caption{Performance of GLM and Two-Part Models on the Test Set}
+\label{tab:overall}
+\begin{tabular}{lrrr}
+\hline
+Model                                          & MAE    & RMSE   & RMSLE\_NonZero \\
+\hline
+Two-Part (Logistic GLM + XGBoost)             & 1638.93 & 5109.04 & 0.63 \\
+Two-Part (XGB Classifier + XGBoost)           & 1638.70 & 5111.97 & 0.64 \\
+Two-Part (XGB + Lognormal GLM)                & 1955.07 & 5762.51 & 0.70 \\
+Two-Part (Logistic GLM + Lognormal GLM)       & 1956.60 & 5767.96 & 0.69 \\
+Single GLM (Lognormal)                        & 2013.27 & 5871.64 & 0.65 \\
+Two-Part (XGB + Gamma GLM)                    & 2126.21 & 6159.53 & 0.69 \\
+Two-Part (Logistic GLM + Gamma GLM)           & 2128.57 & 6167.72 & 0.67 \\
+\hline
+\end{tabular}
+\end{table}
+
+### Subgroup Performance
+
+To examine whether the performance gains were consistent across different
+patient groups, we evaluated RMSE within several clinical subgroups
+(Tables~\ref{tab:multi} and \ref{tab:hosp}). In the multi-morbidity analysis,
+XGBoost provided noticeable improvements over GLMs in all three groups. The
+largest reduction in RMSE occurred in the high multi-morbidity group
+(about 11\%), where patients tended to have multiple chronic conditions and
+more complex utilization patterns. Improvements of around 9--13\% were also
+observed in the low- and medium-multi-morbidity groups.
+
+\begin{table}[H]
+\centering
+\caption{Performance of GLM and XGBoost Across Multi-Morbidity Subgroups}
+\label{tab:multi}
+\begin{tabular}{lrrrr}
+\hline
+Subgroup               & $n$    & GLM RMSE & XGB RMSE & RMSE Improvement (\%) \\
+\hline
+High Multi-Morbidity   & 9{,}864  & 10{,}311   &  9{,}156   & 11.21 \\
+Medium Multi-Morbidity & 11{,}410 &  3{,}079   &  2{,}676   & 13.09 \\
+Low Multi-Morbidity    & 13{,}631 &    566    &    514    &  9.12 \\
+\hline
+\end{tabular}
+\end{table}
+
+A similar pattern was observed in the hospitalization subgroups
+(Table~\ref{tab:hosp}). Among beneficiaries with at least one inpatient stay,
+XGBoost reduced RMSE by roughly 11\%. For those without any hospitalizations,
+the reduction in RMSE was even larger (about 21\%). These results suggest that
+the tree-based severity model remained stable across clinically heterogeneous
+groups and was especially useful when utilization patterns were more variable.
+
+\begin{table}[H]
+\centering
+\caption{Performance of GLM and XGBoost in Hospitalization Subgroups}
+\label{tab:hosp}
+\begin{tabular}{lrrrr}
+\hline
+Subgroup          & $n$    & GLM RMSE & XGB RMSE & RMSE Improvement (\%) \\
+\hline
+Hospitalized      & 4{,}812  & 15{,}061   & 13{,}434   & 10.80 \\
+Not Hospitalized  & 30{,}093 &  1{,}523   &  1{,}204   & 20.92 \\
+\hline
+\end{tabular}
+\end{table}
+
+### Calibration
+
+Model calibration was assessed by comparing predicted and observed quantiles of
+annual spending. As shown in the Q--Q plot (**Figure2**), predicted values
+aligned closely with the empirical distribution across most quantiles, with only
+mild under-prediction in the extreme upper tail. This pattern is expected given
+the presence of rare, very high-cost cases and is consistent with findings from
+other cost-modeling studies.
+
+#### Figure2. Calibration Q--Q Plot
+```{r echo=FALSE, out.width="85%", fig.align="center"}
+knitr::include_graphics("/Users/yueyuechangxiangjian/Desktop/table3.png")
+```
+## Conclusion
+
+In this project, we compared several approaches for predicting annual Medicare expenditures using a large claims dataset. Our main goal was to evaluate whether a two-part modeling structure, combined with a modern machine-learning method for the severity stage, could better handle the zero inflation and heavy right tail typical of healthcare cost data.
+
+Across all models, the two-part specification using a logistic GLM for frequency and an XGBoost regressor for severity achieved the strongest overall performance. It reduced RMSE and MAE by roughly 13% and 19% compared with a single lognormal GLM, indicating clear benefits to modeling the probability of any expenditure separately from the magnitude of positive costs.
+
+Subgroup analyses showed that these gains were broadly consistent across clinical groups, with the largest improvements observed among high-morbidity patients and those with inpatient stays. In these settings, nonlinear relationships appeared more important, and the tree-based model captured them more effectively than GLMs. Calibration results further supported the model’s reliability, with only mild underestimation in the extreme upper tail.
+
+During the modeling process, we also learned the importance of careful feature engineering. Removing utilization-based variables from the frequency model prevented data leakage and led to more realistic performance. We also found that RMSLE must be interpreted carefully in two-part models since they cannot predict exact zeros, which affects log-error metrics.
+
+Overall, the results suggest that a two-part framework paired with a flexible machine-learning severity model provides a strong and practical approach for healthcare cost prediction, balancing interpretability with accuracy and robustness.
+\newpage
+
+## References
+
+1. Tulchinsky, T. H., & Varavikova, E. A. (2014). *National health systems*. *The New Public Health*, 643.
+2. Kane, J. (2012). *Health costs: How the US compares with other countries*. *PBS Newshour*, 22, 1–32.
+3. Papanicolas, I., Woskie, L. R., & Jha, A. K. (2018). *Health care spending in the United States and other high-income countries*. *JAMA*, 319(10), 1024–1039.
+4. Frees, E. W., Lee, G., & Yang, L. (2016). *Multivariate frequency-severity regression models in insurance*. *Risks*, 4(1), 4.
+5. Su, X., & Bai, M. (2020). *Stochastic gradient boosting frequency–severity model of insurance claims*. *PLOS ONE*, 15(7), e0235813.
+
+
+
+**Group Contributions.**
+
+- **Meijie Yue**
+  - Developed the complete analysis codebase and modeling pipeline.
+  - Designed and implemented all statistical and machine learning models
+  - Wrote the Results and Conclusion sections of the report.
+  - Prepared the project proposal and presentation slides.
+  - Maintained the public GitHub repository for version control and collaboration.
+
+- **Ziyan Xu**
+  - Updated and refactored the modeling code to ensure compatibility with newer versions of the XGBoost package.
+  - Resolved runtime issues and verified reproducibility across different computing environments.
+  - Wrote the Introduction and Abstract sections of the report.
+  - Delivered the in-class project presentation.
+
+- **Ruicong Peng**
+  - Wrote the Methods section of the report, covering data preprocessing through sensitivity and subgroup analyses.
+  - Prepared the Analysis Plan section of the project proposal.
+  - Delivered the in-class project presentation.
+
+All group members contributed to the discussion, interpretation of results, and final revisions of the report.
+
+**GitHub Repository.**  
+A public GitHub repository was used for collaboration and version control throughout the project.  
+The repository is available at:  
+https://github.com/yueyue129/bios625-finalproject
